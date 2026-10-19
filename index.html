@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hawk-Dove ESS Simulator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+
+<div class="max-w-4xl mx-auto p-4">
+  <h1 class="text-3xl font-bold text-center text-red-400 mb-1">Hawk-Dove ESS Simulator</h1>
+  <p class="text-center text-gray-400 mb-5 text-sm">Evolutionary Stable Strategy — how do aggression and restraint coexist?</p>
+
+  <div class="grid md:grid-cols-2 gap-5 mb-5">
+    <!-- Parameters + Matrix -->
+    <div class="bg-gray-800 rounded-xl p-4">
+      <h2 class="font-semibold text-red-300 mb-3">Parameters</h2>
+
+      <label class="block text-sm text-gray-400 mb-1">
+        Resource Value (V): <span id="vVal" class="text-white font-bold">6</span>
+      </label>
+      <input type="range" id="sliderV" min="1" max="20" value="6"
+        class="w-full mb-3" aria-label="Resource value V"
+        oninput="onParamChange()">
+
+      <label class="block text-sm text-gray-400 mb-1">
+        Injury Cost (C): <span id="cVal" class="text-white font-bold">10</span>
+      </label>
+      <input type="range" id="sliderC" min="1" max="20" value="10"
+        class="w-full mb-4" aria-label="Injury cost C"
+        oninput="onParamChange()">
+
+      <h2 class="font-semibold text-red-300 mb-2">Payoff Matrix</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-center" role="table" aria-label="Hawk-Dove payoff matrix">
+          <thead class="text-gray-400">
+            <tr>
+              <th class="p-2"></th>
+              <th class="p-2 text-red-400">vs Hawk</th>
+              <th class="p-2 text-blue-400">vs Dove</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 text-red-400 font-semibold">Hawk</td>
+              <td id="m-HH" class="p-2 border border-gray-600 rounded text-gray-200"></td>
+              <td id="m-HD" class="p-2 border border-gray-600 rounded text-gray-200"></td>
+            </tr>
+            <tr>
+              <td class="p-2 text-blue-400 font-semibold">Dove</td>
+              <td id="m-DH" class="p-2 border border-gray-600 rounded text-gray-200"></td>
+              <td id="m-DD" class="p-2 border border-gray-600 rounded text-gray-200"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="essInfo" class="mt-4 bg-gray-700 rounded p-3 text-sm text-gray-200"></div>
+    </div>
+
+    <!-- ESS Info + Controls -->
+    <div class="bg-gray-800 rounded-xl p-4 flex flex-col gap-3">
+      <h2 class="font-semibold text-red-300">ESS Composition</h2>
+      <div id="essComposition" class="text-sm text-gray-300"></div>
+
+      <div class="flex gap-4 items-center">
+        <div class="flex-1">
+          <div class="text-xs text-gray-400 mb-1">Hawks <span id="hawkPct" class="text-red-400 font-bold">50%</span></div>
+          <div class="w-full bg-blue-700 rounded-full h-5 overflow-hidden" role="progressbar"
+            aria-label="Hawk population proportion">
+            <div id="hawkBar" class="h-5 bg-red-500 transition-all duration-300 rounded-full" style="width:50%"></div>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">Doves <span id="dovePct" class="text-blue-400 font-bold">50%</span></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Starting Hawk % (for simulation)</label>
+        <input type="range" id="initHawk" min="0" max="100" value="50"
+          class="w-full" aria-label="Starting hawk percentage"
+          oninput="document.getElementById('initHawkVal').textContent=this.value+'%'; onParamChange()">
+        <span id="initHawkVal" class="text-xs text-gray-300">50%</span>
+      </div>
+
+      <button onclick="onParamChange()"
+        class="bg-red-700 hover:bg-red-600 rounded py-2 font-semibold"
+        aria-label="Run simulation">
+        Run 50-Generation Simulation
+      </button>
+    </div>
+  </div>
+
+  <!-- Population chart -->
+  <div class="bg-gray-800 rounded-xl p-4 mb-5">
+    <h2 class="font-semibold text-red-300 mb-2">Population Over 50 Generations</h2>
+    <canvas id="popChart" width="800" height="200" aria-label="Population evolution chart"></canvas>
+    <div class="flex gap-6 mt-2 text-xs justify-center">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 inline-block rounded"></span> Hawks (%)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 inline-block rounded"></span> Doves (%)</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 bg-yellow-400 inline-block rounded"></span> ESS equilibrium</span>
+    </div>
+  </div>
+
+  <!-- Educational -->
+  <div class="bg-gray-800 rounded-xl p-4">
+    <h2 class="font-semibold text-red-300 mb-2">About Hawk-Dove &amp; ESS</h2>
+    <div class="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
+      <div>
+        <p class="mb-2"><strong class="text-white">Hawks</strong> always escalate conflicts — they fight for resources and win them all, but risk serious injury fighting other Hawks. <strong class="text-white">Doves</strong> display but retreat if escalation occurs — never injured, but lose resources to Hawks.</p>
+        <p><strong class="text-white">When V &gt; C:</strong> Hawks always beat the cost of fighting, so Hawks dominate — pure Hawk population is the ESS.</p>
+      </div>
+      <div>
+        <p class="mb-2"><strong class="text-white">When V &lt; C:</strong> Fighting other Hawks is too costly. Neither pure Hawks nor pure Doves is stable. The ESS is a <em>mixed population</em> of V/C proportion Hawks.</p>
+        <p><strong class="text-white">Biological examples:</strong> Elephant seals (high V/C → fierce fights), Songbirds (moderate C → ritualized displays), Fiddler crabs (claw size signals — Dove-like assessment before escalation).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const DISPLAY_COST = 1;
+let simHistory = [];
+
+function getParams() {
+  const V = +document.getElementById('sliderV').value;
+  const C = +document.getElementById('sliderC').value;
+  const initH = +document.getElementById('initHawk').value / 100;
+  return { V, C, initH };
+}
+
+function payoffs(V, C) {
+  return {
+    HH: (V - C) / 2,   // Hawk vs Hawk (expected)
+    HD: V,              // Hawk vs Dove
+    DH: 0,              // Dove vs Hawk
+    DD: V/2 - DISPLAY_COST,  // Dove vs Dove
+  };
+}
+
+function computeESS(V, C) {
+  if (V >= C) return { type: 'pure_hawk', ratio: 1.0 };
+  return { type: 'mixed', ratio: V / C };
+}
+
+function runSimulation(V, C, initH) {
+  const P = payoffs(V, C);
+  let hawkFrac = initH;
+  const history = [hawkFrac];
+  for (let g = 0; g < 50; g++) {
+    const d = 1 - hawkFrac;
+    const fitH = hawkFrac * P.HH + d * P.HD;
+    const fitD = hawkFrac * P.DH + d * P.DD;
+    const avgFit = hawkFrac * fitH + d * fitD;
+    if (Math.abs(avgFit) < 1e-9) break;
+    hawkFrac = hawkFrac * fitH / avgFit;
+    hawkFrac = Math.max(0, Math.min(1, hawkFrac));
+    history.push(hawkFrac);
+  }
+  return history;
+}
+
+function onParamChange() {
+  const { V, C, initH } = getParams();
+  document.getElementById('vVal').textContent = V;
+  document.getElementById('cVal').textContent = C;
+
+  const P = payoffs(V, C);
+  document.getElementById('m-HH').textContent = P.HH.toFixed(2);
+  document.getElementById('m-HD').textContent = P.HD.toFixed(2);
+  document.getElementById('m-DH').textContent = P.DH.toFixed(2);
+  document.getElementById('m-DD').textContent = P.DD.toFixed(2);
+
+  const ess = computeESS(V, C);
+  let essText, essComp;
+  if (ess.type === 'pure_hawk') {
+    essText = `V (${V}) ≥ C (${C}): Hawks always profitable → Pure Hawk ESS (100% Hawks)`;
+    essComp = `ESS: <strong class="text-red-400">100% Hawks</strong> — fighting always pays.`;
+  } else {
+    const pct = Math.round(ess.ratio * 100);
+    essText = `V (${V}) < C (${C}): Mixed ESS = V/C = ${pct}% Hawks, ${100-pct}% Doves`;
+    essComp = `ESS: <strong class="text-red-400">${pct}% Hawks</strong> / <strong class="text-blue-400">${100-pct}% Doves</strong>`;
+  }
+  document.getElementById('essInfo').textContent = essText;
+  document.getElementById('essComposition').innerHTML = escapeHtml(essComp).replace(/&lt;strong/g,'<strong').replace(/&lt;\/strong&gt;/g,'</strong>').replace(/strong&gt;/g,'strong>');
+
+  simHistory = runSimulation(V, C, initH);
+  const lastH = simHistory[simHistory.length - 1];
+  document.getElementById('hawkPct').textContent = Math.round(lastH*100) + '%';
+  document.getElementById('dovePct').textContent = Math.round((1-lastH)*100) + '%';
+  document.getElementById('hawkBar').style.width = Math.round(lastH*100) + '%';
+
+  drawChart(ess);
+}
+
+function drawChart(ess) {
+  const canvas = document.getElementById('popChart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const pad = 35;
+  const chartW = W - pad*2;
+  const chartH = H - pad - 10;
+  const n = simHistory.length;
+
+  // Grid lines
+  ctx.strokeStyle = '#374151';
+  ctx.lineWidth = 0.5;
+  for (let v = 0; v <= 100; v += 20) {
+    const y = chartH - (v/100)*chartH + 10;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-5,y); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(v+'%', pad-3, y+3);
+  }
+
+  // ESS line
+  const essY = chartH - (ess.ratio)*chartH + 10;
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(pad, essY); ctx.lineTo(W-5, essY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#facc15'; ctx.font = '9px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('ESS '+Math.round(ess.ratio*100)+'%', W-40, essY-3);
+
+  function plotLine(data, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    data.forEach((v,i) => {
+      const x = pad + (i/Math.max(n-1,1)) * chartW;
+      const y = chartH - v*chartH + 10;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  }
+
+  plotLine(simHistory, '#ef4444');
+  plotLine(simHistory.map(v=>1-v), '#3b82f6');
+
+  // X labels
+  [0,10,20,30,40,50].forEach(g => {
+    const idx = Math.min(g, n-1);
+    const x = pad + (idx/Math.max(n-1,1)) * chartW;
+    ctx.fillStyle = '#9ca3af'; ctx.font = '9px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('G'+g, x, H-2);
+  });
+
+  // Axes
+  ctx.strokeStyle = '#6b7280'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,10); ctx.lineTo(pad,chartH+10); ctx.lineTo(W-5,chartH+10); ctx.stroke();
+}
+
+// Init
+onParamChange();
+</script>
+</body>
+</html>
